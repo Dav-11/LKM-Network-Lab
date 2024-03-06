@@ -1,0 +1,20 @@
+# LKM build stages
+*.ko
+*.o
+*.o.d
+*.o.cmd
+*.mod.c
+*.mod
+*.mod.cmd
+*.ko.cmd
+**/*.cmd
+modules.order
+Module.symvers
+
+# IDEs
+.idea
+.vscode
+.fleet
+
+# MacOS
+.DS_Store
