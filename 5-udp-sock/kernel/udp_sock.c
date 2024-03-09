@@ -6,6 +6,8 @@
  * Code skeleton.
  */
 
+#define pr_fmt(fmt) "%s:%s(): " fmt, KBUILD_MODNAME, __func__
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>
@@ -27,21 +29,21 @@ MODULE_LICENSE("GPL");
 #define DEBUG			ON
 
 #if DEBUG == ON
-#define LOG(s)					\
-	do {					\
-		printk(KERN_DEBUG s "\n");	\
+#define LOG(s)											\
+	do {												\
+		printk(KERN_DEBUG s "\n");						\
 	} while (0)
 #else
-#define LOG(s)					\
+#define LOG(s)											\
 	do {} while (0)
 #endif
 
-#define print_sock_address(addr)		\
-	do {					\
+#define print_sock_address(addr)						\
+	do {												\
 		printk(LOG_LEVEL "connection established to "	\
-				NIPQUAD_FMT ":%d\n", 		\
-				NIPQUAD(addr.sin_addr.s_addr),	\
-				ntohs(addr.sin_port));		\
+				NIPQUAD_FMT ":%d\n", 					\
+				NIPQUAD(addr.sin_addr.s_addr),			\
+				ntohs(addr.sin_port));					\
 	} while (0)
 
 static struct socket *sock;	/* UDP server */
@@ -55,7 +57,9 @@ static int my_udp_msgsend(struct socket *s)
 		.sin_port	= htons(MY_UDP_REMOTE_PORT),
 		.sin_addr	= { htonl(INADDR_LOOPBACK) }
 	};
+
 	int raddrlen = sizeof(raddr);
+
 	/* message */
 	struct msghdr msg;
 	struct iovec iov;
@@ -63,28 +67,60 @@ static int my_udp_msgsend(struct socket *s)
 	int len = strlen(buffer) + 1;
 
 	/* TODO 1: build message */
+	msg.msg_name = NULL;
+	msg.msg_control = NULL;
+	msg.msg_controllen = 0;
+	msg.msg_namelen = 0;
+	msg.msg_flags = 0;
+
+	iov.iov_base = buffer;
+	iov.iov_len	 = len;
+
+
+	msg.msg_name = (struct sockaddr *) &raddr;
+	msg.msg_namelen = raddrlen;
 
 	/* TODO 1: send the message down the socket and return the
 	 * error code.
 	 */
+	int err = kernel_sendmsg(s, &msg, (struct kvec *) &iov, 1, len);
+	if (err != 0) {
 
+		return err;
+	}
+	
 	return 0;
 }
 
 int __init my_udp_sock_init(void)
 {
 	int err;
+	
 	/* address to bind on */
 	struct sockaddr_in addr = {
 		.sin_family	= AF_INET,
 		.sin_port	= htons(MY_UDP_LOCAL_PORT),
 		.sin_addr	= { htonl(INADDR_LOOPBACK) }
 	};
+
 	int addrlen = sizeof(addr);
 
 	/* TODO 1: create UDP socket */
+	err = sock_create_kern(&init_net, PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock);
+	if (err < 0) {
+		
+		goto out;
+	}
 
 	/* TODO 1: bind socket to loopback on port MY_UDP_LOCAL_PORT */
+
+	err = sock->ops->bind (sock, (struct sockaddr *) &addr, addrlen);
+	if (err < 0) {
+	
+		/* handle error */
+		pr_err("Could not bind socket");
+		goto out;
+	}
 
 	/* send message */
 	err = my_udp_msgsend(sock);
@@ -96,7 +132,9 @@ int __init my_udp_sock_init(void)
 	return 0;
 
 out_release:
+
 	/* TODO 1: release socket */
+	sock_release(sock);
 out:
 	return err;
 }
@@ -104,6 +142,7 @@ out:
 void __exit my_udp_sock_exit(void)
 {
 	/* TODO 1: release socket */
+	sock_release(sock);
 }
 
 module_init(my_udp_sock_init);

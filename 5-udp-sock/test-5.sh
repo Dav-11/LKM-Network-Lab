@@ -8,16 +8,18 @@
 set -x
 
 # listen for UDP packets on localhost, port 60001 (run in background)
-../netcat -l -u -p 60001 &
+nc -l -u -p 60001 &
 
 # get pid of netcat
 pid=$!
 
 # wait for netcat to start listening
-sleep 1
+sleep 2
 
 # insert module, causing the message to be sent
-insmod udp_sock.ko
+insmod ./kernel/udp_sock.ko
+
+sleep 3
 
 # remove module
 rmmod udp_sock
